@@ -18,12 +18,14 @@ environment variable.
 `unit_cards/` and `data/*.json` are generated files and are not checked into
 the repo. `server.js` automatically runs first-time setup (`setup.js`) before
 it starts listening: it downloads the unit card images from the xlsx into
-`unit_cards/` (`download_unit_cards.js`), then parses the xlsx and
-cross-references `unit_cards/` to produce `data/units.json` (`build_data.js`).
-Each step is skipped if its output already exists, so this adds no delay on
-later starts. Delete `unit_cards/` or `data/units.json` first if you need to
-force a refresh (e.g. after the xlsx changes). Saved rosters are stored at
-runtime in `data/rosters.json`, created automatically on first save.
+`unit_cards/` (`download_unit_cards.js`), parses the xlsx and cross-references
+`unit_cards/` to produce `data/units.json` (`build_data.js`), and parses the
+per-faction description / abilities / bonus text from column J into
+`data/factions.json` (`build_factions.js`). Each step is skipped if its
+output already exists, so this adds no delay on later starts. Delete
+`unit_cards/` or the relevant `data/*.json` file first if you need to force a
+refresh (e.g. after the xlsx changes). Saved rosters are stored at runtime in
+`data/rosters.json`, created automatically on first save.
 
 ## Project layout
 
@@ -33,6 +35,7 @@ runtime in `data/rosters.json`, created automatically on first save.
 - `setup.js` — first-time setup, run automatically by `server.js`
 - `download_unit_cards.js` — downloads unit card images from the xlsx into `unit_cards/`
 - `build_data.js` — parses the xlsx and cross-references `unit_cards/` to produce `data/units.json`
+- `build_factions.js` — parses each faction's description, per-type abilities, and loyalty bonus (xlsx column J) into `data/factions.json`
 
 ## API
 
@@ -42,6 +45,10 @@ runtime in `data/rosters.json`, created automatically on first save.
 
 ## Changelog
 
+- **2026-08-04** — Added `build_factions.js`, which extracts each faction's
+  description, per-type abilities, and loyalty bonus text into
+  `data/factions.json`. Wired into `setup.js` alongside the other generated
+  data.
 - **2026-08-03** — `node server.js` now runs first-time setup automatically,
   so a fresh checkout only needs that one command. Setup skips any step
   whose output already exists.

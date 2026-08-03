@@ -1,14 +1,15 @@
-// First-time setup: downloads unit card images and builds data/units.json,
-// skipping any step whose output already exists. Required by server.js, which
-// runs this automatically on startup — run `node setup.js` directly only if
-// you want to pre-populate without starting the server. Run the underlying
-// scripts directly if you need to force a refresh.
+// First-time setup: downloads unit card images and builds data/units.json
+// and data/factions.json, skipping any step whose output already exists.
+// Required by server.js, which runs this automatically on startup — run
+// `node setup.js` directly only if you want to pre-populate without starting
+// the server. Run the underlying scripts directly if you need to force a refresh.
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
 const UNIT_CARDS_DIR = path.join(__dirname, 'unit_cards');
 const UNITS_FILE = path.join(__dirname, 'data', 'units.json');
+const FACTIONS_FILE = path.join(__dirname, 'data', 'factions.json');
 
 function dirHasFiles(dir) {
   if (!fs.existsSync(dir)) return false;
@@ -33,6 +34,12 @@ if (fs.existsSync(UNITS_FILE)) {
   console.log('data/units.json already exists — skipping build_data.js');
 } else {
   run('build_data.js');
+}
+
+if (fs.existsSync(FACTIONS_FILE)) {
+  console.log('data/factions.json already exists — skipping build_factions.js');
+} else {
+  run('build_factions.js');
 }
 
 if (require.main === module) {
