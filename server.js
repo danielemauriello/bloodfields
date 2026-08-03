@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 
+require('./setup'); // downloads unit cards / builds units.json on first run; no-op after that
+
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, 'public');

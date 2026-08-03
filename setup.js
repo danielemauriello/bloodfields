@@ -1,6 +1,8 @@
-// One-shot first-time setup: downloads unit card images and builds
-// data/units.json, skipping any step whose output already exists.
-// Re-run any of the underlying scripts directly if you need to force a refresh.
+// First-time setup: downloads unit card images and builds data/units.json,
+// skipping any step whose output already exists. Required by server.js, which
+// runs this automatically on startup — run `node setup.js` directly only if
+// you want to pre-populate without starting the server. Run the underlying
+// scripts directly if you need to force a refresh.
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -33,4 +35,6 @@ if (fs.existsSync(UNITS_FILE)) {
   run('build_data.js');
 }
 
-console.log('\nSetup complete. Run `node server.js` to start the app.');
+if (require.main === module) {
+  console.log('\nSetup complete. Run `node server.js` to start the app.');
+}
