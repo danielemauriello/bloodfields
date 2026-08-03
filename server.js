@@ -14,6 +14,7 @@ const PUBLIC_DIR = path.join(ROOT, 'public');
 const UNIT_CARDS_DIR = path.join(ROOT, 'unit_cards');
 const DATA_DIR = path.join(ROOT, 'data');
 const UNITS_FILE = path.join(DATA_DIR, 'units.json');
+const FACTIONS_FILE = path.join(DATA_DIR, 'factions.json');
 const ROSTERS_FILE = path.join(DATA_DIR, 'rosters.json');
 
 const MIME = {
@@ -40,6 +41,17 @@ function loadUnitsIndex() {
 }
 loadUnitsIndex();
 
+let factionsByKey = new Map();
+function loadFactionsIndex() {
+  try {
+    const factions = JSON.parse(fs.readFileSync(FACTIONS_FILE, 'utf8'));
+    factionsByKey = new Map(factions.map(f => [`${f.realm}|||${f.faction}`, f]));
+  } catch (e) {
+    factionsByKey = new Map();
+  }
+}
+loadFactionsIndex();
+
 // Resolves roster unit ids to card art for PDF export, sorted to match the
 // app's own faction/name grouping.
 function cardsFromIds(unitIds) {
@@ -49,6 +61,7 @@ function cardsFromIds(unitIds) {
     if (!u) continue;
     cards.push({
       name: u.unit,
+      realm: u.realm,
       faction: u.faction,
       cost: u.cost,
       imagePath: path.join(UNIT_CARDS_DIR, u.image.slice('/unit_cards/'.length)),
@@ -56,6 +69,24 @@ function cardsFromIds(unitIds) {
   }
   cards.sort((a, b) => a.faction.localeCompare(b.faction) || a.name.localeCompare(b.name));
   return cards;
+}
+
+// Looks up reference info (description/abilities/bonus) for every distinct
+// faction represented in `cards`, in the same order the factions first
+// appear among the (already faction-sorted) cards. Factions with no column J
+// text in the source xlsx (e.g. sub-rosters like "*The Damned Crew") have no
+// entry in factions.json and are silently skipped.
+function factionsForCards(cards) {
+  const seen = new Set();
+  const factions = [];
+  for (const c of cards) {
+    const key = `${c.realm}|||${c.faction}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const f = factionsByKey.get(key);
+    if (f) factions.push(f);
+  }
+  return factions;
 }
 
 function sendPdf(res, filename, buffer) {
@@ -132,6 +163,10 @@ const server = http.createServer(async (req, res) => {
       return serveFile(res, DATA_DIR, 'units.json');
     }
 
+    if (pathname === '/data/factions.json' && req.method === 'GET') {
+      return serveFile(res, DATA_DIR, 'factions.json');
+    }
+
     if (pathname.startsWith('/unit_cards/') && req.method === 'GET') {
       return serveFile(res, UNIT_CARDS_DIR, pathname.slice('/unit_cards/'.length));
     }
@@ -146,7 +181,12 @@ const server = http.createServer(async (req, res) => {
       if (!roster) return sendJson(res, 404, { error: 'Roster not found' });
       const cards = cardsFromIds(roster.unitIds);
       if (!cards.length) return sendJson(res, 400, { error: 'Roster has no valid units' });
-      const pdf = buildRosterPdf(cards, name, `${roster.realm} — ${cards.length} units — ${cards.reduce((s, c) => s + c.cost, 0)} pts`);
+      const pdf = buildRosterPdf(
+        cards,
+        name,
+        `${roster.realm} — ${cards.length} units — ${cards.reduce((s, c) => s + c.cost, 0)} pts`,
+        factionsForCards(cards)
+      );
       return sendPdf(res, name, pdf);
     }
 
@@ -165,7 +205,7 @@ const server = http.createServer(async (req, res) => {
       if (!cards.length) return sendJson(res, 400, { error: 'No valid units found' });
       const title = body.name || 'Roster';
       const subtitle = `${body.realm || ''}${body.realm ? ' — ' : ''}${cards.length} units — ${cards.reduce((s, c) => s + c.cost, 0)} pts`;
-      const pdf = buildRosterPdf(cards, title, subtitle);
+      const pdf = buildRosterPdf(cards, title, subtitle, factionsForCards(cards));
       return sendPdf(res, title, pdf);
     }
 
