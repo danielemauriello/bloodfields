@@ -6,6 +6,9 @@ them to a roster, and save it by name for later.
 
 ## Running it
 
+Requires Node.js — download it from https://nodejs.org (LTS version) if you
+don't already have it installed.
+
 No dependencies to install — the server uses only Node's built-in modules.
 
 ```
