@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bloodfields Roster Builder</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>Bloodfields Roster Builder</h1>
+  <div id="topbar-realm" class="topbar-realm hidden">
+    <span id="topbar-realm-name"></span>
+    <button id="change-realm-btn" class="btn btn-secondary">Back</button>
+  </div>
+</header>
+
+<main id="app">
+
+  <section id="view-realm-picker" class="view">
+    <div class="picker-columns">
+      <div class="picker-col">
+        <h2>Start a new roster</h2>
+        <p class="hint">Pick the realm your army will be drawn from. Mercenaries are always available regardless of realm.</p>
+        <form id="realm-form" class="realm-list"></form>
+        <button id="start-btn" class="btn btn-primary" disabled>Start</button>
+      </div>
+      <div class="picker-col">
+        <h2>Load a saved roster</h2>
+        <p class="hint">Rosters you've saved with a name.</p>
+        <div id="saved-roster-list" class="saved-roster-list">
+          <p class="empty-note">No saved rosters yet.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-main" class="view hidden">
+    <div id="unit-list"></div>
+  </section>
+
+</main>
+
+<button id="roster-toggle" class="roster-toggle hidden">
+  Roster · <span id="roster-toggle-count">0</span> units · <span id="roster-toggle-cost">0</span> pts
+</button>
+
+<aside id="roster-drawer" class="roster-drawer">
+  <div class="roster-drawer-header">
+    <h2>My Roster</h2>
+    <button id="roster-close-btn" class="btn-icon" aria-label="Close">×</button>
+  </div>
+  <div id="roster-realm-label" class="roster-realm-label"></div>
+  <div id="roster-items" class="roster-items"></div>
+  <div class="roster-total">
+    <span>Total cost</span>
+    <strong id="roster-total-cost">0</strong>
+  </div>
+  <div class="roster-save">
+    <label for="roster-name-input">Save this roster as</label>
+    <input id="roster-name-input" type="text" placeholder="e.g. Beastshape Bruisers" />
+    <button id="roster-save-btn" class="btn btn-primary">Save</button>
+    <p id="roster-save-status" class="save-status"></p>
+  </div>
+  <button id="roster-clear-btn" class="btn btn-danger-outline">Clear roster</button>
+</aside>
+<div id="roster-backdrop" class="drawer-backdrop hidden"></div>
+
+<div id="image-modal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-content">
+    <button id="modal-close" class="btn-icon" aria-label="Close">×</button>
+    <img id="modal-img" src="" alt="" />
+    <div id="modal-caption" class="modal-caption"></div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
