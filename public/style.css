@@ -95,6 +95,27 @@ body {
   font-size: 15px; text-transform: uppercase; letter-spacing: 0.03em;
   color: var(--text-dim); border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 8px;
 }
+.faction-info { margin: -4px 0 12px; }
+.faction-info-toggle {
+  background: none; border: none; color: var(--text-dim); font: inherit; font-size: 12px;
+  cursor: pointer; padding: 2px 0;
+}
+.faction-info-toggle:hover { color: var(--text); }
+.faction-info-body {
+  margin-top: 8px; padding: 12px 14px; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--border);
+  font-size: 13px; color: var(--text-dim); line-height: 1.5;
+}
+.faction-info-body p { margin: 0 0 8px; }
+.faction-info-body p:last-child { margin-bottom: 0; }
+.faction-info-body h4 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--text-dim); margin: 12px 0 6px;
+}
+.faction-info-body ul { margin: 0; padding-left: 18px; }
+.faction-info-body li { margin-bottom: 6px; }
+.faction-info-body li:last-child { margin-bottom: 0; }
+
 .unit-row {
   display: flex; align-items: center; gap: 12px;
   padding: 8px 10px; border-radius: 6px;

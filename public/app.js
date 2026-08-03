@@ -4,6 +4,7 @@
   const state = {
     units: [],
     unitsById: new Map(),
+    factionsByKey: new Map(), // `${realm}|||${faction}` -> faction reference info
     selectedRealm: null,
     rosterIds: new Set(),
     currentRosterName: '',
@@ -176,11 +177,69 @@
       }
       const factions = [...map.keys()].sort((a, b) => a.localeCompare(b));
       return factions.map(f => ({
+        realm: map.get(f)[0].realm,
         faction: f,
         units: map.get(f).sort((a, b) => a.unit.localeCompare(b.unit)),
       }));
     };
     return [...byFaction(inRealm), ...byFaction(mercs)];
+  }
+
+  // Strips a (sometimes typo'd) "<Faction> Loyalty Bonus:" prefix so it isn't
+  // repeated right under our own "Loyalty Bonus" heading.
+  function stripBonusPrefix(text) {
+    return text.replace(/^[A-Za-z' ]{0,40}Loyalty Bonus:\s*/, '');
+  }
+
+  function renderFactionInfo(f) {
+    const wrap = document.createElement('div');
+    wrap.className = 'faction-info';
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'faction-info-toggle';
+    toggle.textContent = 'Faction info ▾';
+    wrap.appendChild(toggle);
+
+    const body = document.createElement('div');
+    body.className = 'faction-info-body hidden';
+
+    if (f.description) {
+      for (const para of f.description.split('\n').map(s => s.trim()).filter(Boolean)) {
+        const p = document.createElement('p');
+        p.textContent = para;
+        body.appendChild(p);
+      }
+    }
+    const abilityEntries = Object.entries(f.abilities || {});
+    if (abilityEntries.length) {
+      const h4 = document.createElement('h4');
+      h4.textContent = 'Abilities';
+      body.appendChild(h4);
+      const ul = document.createElement('ul');
+      for (const [, text] of abilityEntries) {
+        const li = document.createElement('li');
+        li.textContent = text;
+        ul.appendChild(li);
+      }
+      body.appendChild(ul);
+    }
+    if (f.bonus) {
+      const h4 = document.createElement('h4');
+      h4.textContent = 'Loyalty Bonus';
+      body.appendChild(h4);
+      const p = document.createElement('p');
+      p.textContent = stripBonusPrefix(f.bonus);
+      body.appendChild(p);
+    }
+
+    wrap.appendChild(body);
+    toggle.addEventListener('click', () => {
+      const open = !body.classList.contains('hidden');
+      body.classList.toggle('hidden', open);
+      toggle.textContent = open ? 'Faction info ▾' : 'Faction info ▴';
+    });
+    return wrap;
   }
 
   function renderUnitList() {
@@ -192,6 +251,8 @@
       const h3 = document.createElement('h3');
       h3.textContent = group.faction;
       section.appendChild(h3);
+      const info = state.factionsByKey.get(`${group.realm}|||${group.faction}`);
+      if (info) section.appendChild(renderFactionInfo(info));
       for (const u of group.units) {
         section.appendChild(renderUnitRow(u));
       }
@@ -409,9 +470,16 @@
   // ---------- init ----------
 
   async function init() {
-    const res = await fetch('/data/units.json');
-    state.units = await res.json();
+    const [unitsRes, factionsRes] = await Promise.all([
+      fetch('/data/units.json'),
+      fetch('/data/factions.json'),
+    ]);
+    state.units = await unitsRes.json();
     for (const u of state.units) state.unitsById.set(u.id, u);
+    if (factionsRes.ok) {
+      const factions = await factionsRes.json();
+      for (const f of factions) state.factionsByKey.set(`${f.realm}|||${f.faction}`, f);
+    }
     renderRealmPicker();
     await loadSavedRosters();
   }
