@@ -88,6 +88,7 @@ body {
 .saved-roster-meta { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
 .saved-roster-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .saved-roster-actions .btn { padding: 6px 10px; font-size: 13px; }
+.roster-io { display: flex; gap: 8px; margin-top: 12px; }
 
 /* Unit list */
 .faction-group { margin-bottom: 28px; }

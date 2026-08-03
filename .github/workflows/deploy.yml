@@ -1,0 +1,68 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Ensure unzip is available
+        run: command -v unzip || (sudo apt-get update && sudo apt-get install -y unzip)
+
+      # unit_cards/ (~400MB of card art) and data/*.json are generated from
+      # the xlsx and gitignored (see README). Re-downloading/re-parsing on
+      # every push would be slow, so cache them keyed on the xlsx contents —
+      # setup.js skips any step whose output already exists, so a cache hit
+      # makes this a no-op.
+      - name: Cache generated unit cards / data
+        uses: actions/cache@v4
+        with:
+          path: |
+            unit_cards
+            data/units.json
+            data/factions.json
+          key: bloodfields-assets-${{ hashFiles('Bloodfields Unit List.xlsx') }}
+
+      - name: Download card art + build data (first run, or after xlsx changes)
+        run: node setup.js
+
+      - name: Assemble Pages site
+        run: |
+          mkdir -p dist/data
+          cp public/*.html public/*.js public/*.css dist/
+          cp data/units.json data/factions.json dist/data/
+          cp -r unit_cards dist/unit_cards
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

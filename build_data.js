@@ -150,7 +150,7 @@ function main() {
       unit: u.unit,
       type: u.type,
       cost: u.cost,
-      image: '/unit_cards/' + rel.split(path.sep).join('/'),
+      image: 'unit_cards/' + rel.split(path.sep).join('/'),
     });
   }
 

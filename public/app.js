@@ -49,6 +49,9 @@
     rosterSaveStatus: el('roster-save-status'),
     rosterPdfBtn: el('roster-pdf-btn'),
     rosterClearBtn: el('roster-clear-btn'),
+    rosterExportBtn: el('roster-export-btn'),
+    rosterImportBtn: el('roster-import-btn'),
+    rosterImportInput: el('roster-import-input'),
     modal: el('image-modal'),
     modalImg: el('modal-img'),
     modalCaption: el('modal-caption'),
@@ -57,6 +60,71 @@
 
   function formatCost(cost) {
     return Number.isInteger(cost) ? String(cost) : cost.toFixed(1);
+  }
+
+  // ---------- Roster storage (browser-local; the app has no backend) ----------
+
+  const ROSTER_STORE_KEY = 'bloodfields.rosters';
+
+  function readRosterStore() {
+    try {
+      return JSON.parse(localStorage.getItem(ROSTER_STORE_KEY) || '{}');
+    } catch (e) {
+      return {};
+    }
+  }
+  function writeRosterStore(rosters) {
+    localStorage.setItem(ROSTER_STORE_KEY, JSON.stringify(rosters));
+  }
+  function saveRoster(name, realm, unitIds) {
+    const rosters = readRosterStore();
+    rosters[name] = { realm, unitIds, savedAt: new Date().toISOString() };
+    writeRosterStore(rosters);
+  }
+  function deleteRoster(name) {
+    const rosters = readRosterStore();
+    delete rosters[name];
+    writeRosterStore(rosters);
+  }
+
+  // Resolves roster unit ids to {name, faction, cost, image} cards for PDF
+  // export, sorted to match the app's own faction/name grouping, plus the
+  // distinct factions represented (in display order, duplicates dropped).
+  function cardsAndFactionsForIds(unitIds) {
+    const cards = [];
+    for (const id of unitIds) {
+      const u = state.unitsById.get(id);
+      if (!u) continue;
+      cards.push({ name: u.unit, realm: u.realm, faction: u.faction, cost: u.cost, image: u.image });
+    }
+    cards.sort((a, b) => a.faction.localeCompare(b.faction) || a.name.localeCompare(b.name));
+
+    const seen = new Set();
+    const factions = [];
+    for (const c of cards) {
+      const key = `${c.realm}|||${c.faction}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const f = state.factionsByKey.get(key);
+      if (f) factions.push(f);
+    }
+    return { cards, factions };
+  }
+
+  async function downloadRosterPdf(name, realm, unitIds) {
+    const { cards, factions } = cardsAndFactionsForIds(unitIds);
+    if (!cards.length) throw new Error('No valid units in this roster');
+    const title = name || 'Roster';
+    const subtitle = `${realm || ''}${realm ? ' — ' : ''}${cards.length} units — ${cards.reduce((s, c) => s + c.cost, 0)} pts`;
+    const blob = await window.BloodfieldsPdf.buildRosterPdf(cards, title, subtitle, factions);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name || 'roster'}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   function rosterTotalCost() {
@@ -94,9 +162,8 @@
     showMainView();
   });
 
-  async function loadSavedRosters() {
-    const res = await fetch('/api/rosters');
-    const rosters = await res.json();
+  function loadSavedRosters() {
+    const rosters = readRosterStore();
     const names = Object.keys(rosters).sort((a, b) => (rosters[b].savedAt || '').localeCompare(rosters[a].savedAt || ''));
     els.savedRosterList.innerHTML = '';
     if (!names.length) {
@@ -116,7 +183,7 @@
         </div>
         <div class="saved-roster-actions">
           <button class="btn load-btn">Load</button>
-          <a class="btn pdf-btn" href="/api/rosters/${encodeURIComponent(name)}/pdf">PDF</a>
+          <button class="btn pdf-btn">PDF</button>
           <button class="btn delete-btn">Delete</button>
         </div>`;
       card.querySelector('.load-btn').addEventListener('click', () => {
@@ -126,14 +193,77 @@
         markClean();
         showMainView();
       });
-      card.querySelector('.delete-btn').addEventListener('click', async () => {
+      const pdfBtn = card.querySelector('.pdf-btn');
+      pdfBtn.addEventListener('click', async () => {
+        const original = pdfBtn.textContent;
+        pdfBtn.disabled = true;
+        pdfBtn.textContent = '…';
+        try {
+          await downloadRosterPdf(name, r.realm, validIds);
+        } catch (e) {
+          alert('Could not build PDF.');
+        } finally {
+          pdfBtn.disabled = false;
+          pdfBtn.textContent = original;
+        }
+      });
+      card.querySelector('.delete-btn').addEventListener('click', () => {
         if (!confirm(`Delete saved roster "${name}"?`)) return;
-        await fetch('/api/rosters/' + encodeURIComponent(name), { method: 'DELETE' });
+        deleteRoster(name);
         loadSavedRosters();
       });
       els.savedRosterList.appendChild(card);
     }
   }
+
+  els.rosterExportBtn.addEventListener('click', () => {
+    const rosters = readRosterStore();
+    if (!Object.keys(rosters).length) {
+      alert('No saved rosters to export.');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(rosters, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bloodfields-rosters.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  els.rosterImportBtn.addEventListener('click', () => els.rosterImportInput.click());
+
+  els.rosterImportInput.addEventListener('change', async () => {
+    const file = els.rosterImportInput.files[0];
+    els.rosterImportInput.value = '';
+    if (!file) return;
+    let imported;
+    try {
+      imported = JSON.parse(await file.text());
+    } catch (e) {
+      alert('That file is not valid JSON.');
+      return;
+    }
+    const valid = Object.entries(imported || {}).filter(
+      ([, r]) => r && typeof r.realm === 'string' && Array.isArray(r.unitIds)
+    );
+    if (!valid.length) {
+      alert('No valid rosters found in that file.');
+      return;
+    }
+    const existing = readRosterStore();
+    const overwrites = valid.filter(([name]) => existing[name]).length;
+    const msg =
+      `Import ${valid.length} roster(s)?` + (overwrites ? ` ${overwrites} will overwrite an existing roster of the same name.` : '');
+    if (!confirm(msg)) return;
+    for (const [name, r] of valid) {
+      existing[name] = { realm: r.realm, unitIds: r.unitIds, savedAt: r.savedAt || new Date().toISOString() };
+    }
+    writeRosterStore(existing);
+    loadSavedRosters();
+  });
 
   // ---------- Main view ----------
 
@@ -386,7 +516,7 @@
     renderUnitList();
   });
 
-  els.rosterSaveBtn.addEventListener('click', async () => {
+  els.rosterSaveBtn.addEventListener('click', () => {
     const name = els.rosterNameInput.value.trim();
     if (!name) {
       showSaveStatus('Enter a name for this roster.', true);
@@ -396,19 +526,10 @@
       showSaveStatus('Add at least one unit before saving.', true);
       return;
     }
-    try {
-      const res = await fetch('/api/rosters/' + encodeURIComponent(name), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ realm: state.selectedRealm, unitIds: [...state.rosterIds] }),
-      });
-      if (!res.ok) throw new Error('Save failed');
-      state.currentRosterName = name;
-      markClean();
-      showSaveStatus(`Saved as "${name}".`, false);
-    } catch (e) {
-      showSaveStatus('Could not save roster.', true);
-    }
+    saveRoster(name, state.selectedRealm, [...state.rosterIds]);
+    state.currentRosterName = name;
+    markClean();
+    showSaveStatus(`Saved as "${name}".`, false);
   });
 
   els.rosterPdfBtn.addEventListener('click', async () => {
@@ -420,25 +541,7 @@
     els.rosterPdfBtn.disabled = true;
     els.rosterPdfBtn.textContent = 'Building PDF…';
     try {
-      const res = await fetch('/api/roster-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          realm: state.selectedRealm,
-          unitIds: [...state.rosterIds],
-          name: state.currentRosterName || 'Roster',
-        }),
-      });
-      if (!res.ok) throw new Error('PDF generation failed');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${state.currentRosterName || 'roster'}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadRosterPdf(state.currentRosterName || 'Roster', state.selectedRealm, [...state.rosterIds]);
     } catch (e) {
       showSaveStatus('Could not build PDF.', true);
     } finally {
@@ -471,8 +574,8 @@
 
   async function init() {
     const [unitsRes, factionsRes] = await Promise.all([
-      fetch('/data/units.json'),
-      fetch('/data/factions.json'),
+      fetch('data/units.json'),
+      fetch('data/factions.json'),
     ]);
     state.units = await unitsRes.json();
     for (const u of state.units) state.unitsById.set(u.id, u);
@@ -481,7 +584,7 @@
       for (const f of factions) state.factionsByKey.set(`${f.realm}|||${f.faction}`, f);
     }
     renderRealmPicker();
-    await loadSavedRosters();
+    loadSavedRosters();
   }
 
   init();

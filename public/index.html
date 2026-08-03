@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bloodfields Roster Builder</title>
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="topbar">
@@ -27,9 +27,17 @@
       </div>
       <div class="picker-col">
         <h2>Load a saved roster</h2>
-        <p class="hint">Rosters you've saved with a name.</p>
+        <p class="hint">
+          Rosters you've saved with a name. They're stored in this browser only —
+          use Export/Import to move them to another device.
+        </p>
         <div id="saved-roster-list" class="saved-roster-list">
           <p class="empty-note">No saved rosters yet.</p>
+        </div>
+        <div class="roster-io">
+          <button id="roster-export-btn" class="btn">Export all</button>
+          <button id="roster-import-btn" class="btn">Import…</button>
+          <input id="roster-import-input" type="file" accept="application/json" class="hidden" />
         </div>
       </div>
     </div>
@@ -76,6 +84,7 @@
   </div>
 </div>
 
-<script src="/app.js"></script>
+<script src="pdf-builder.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
