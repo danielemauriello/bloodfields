@@ -1,0 +1,36 @@
+// One-shot first-time setup: downloads unit card images and builds
+// data/units.json, skipping any step whose output already exists.
+// Re-run any of the underlying scripts directly if you need to force a refresh.
+const fs = require('fs');
+const path = require('path');
+const { execFileSync } = require('child_process');
+
+const UNIT_CARDS_DIR = path.join(__dirname, 'unit_cards');
+const UNITS_FILE = path.join(__dirname, 'data', 'units.json');
+
+function dirHasFiles(dir) {
+  if (!fs.existsSync(dir)) return false;
+  return fs.readdirSync(dir).some(entry => {
+    const full = path.join(dir, entry);
+    return fs.statSync(full).isFile() || dirHasFiles(full);
+  });
+}
+
+function run(script) {
+  console.log(`\n> node ${script}`);
+  execFileSync(process.execPath, [script], { stdio: 'inherit', cwd: __dirname });
+}
+
+if (dirHasFiles(UNIT_CARDS_DIR)) {
+  console.log('unit_cards/ already has images — skipping download_unit_cards.js');
+} else {
+  run('download_unit_cards.js');
+}
+
+if (fs.existsSync(UNITS_FILE)) {
+  console.log('data/units.json already exists — skipping build_data.js');
+} else {
+  run('build_data.js');
+}
+
+console.log('\nSetup complete. Run `node server.js` to start the app.');
