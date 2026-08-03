@@ -46,6 +46,7 @@
     rosterNameInput: el('roster-name-input'),
     rosterSaveBtn: el('roster-save-btn'),
     rosterSaveStatus: el('roster-save-status'),
+    rosterPdfBtn: el('roster-pdf-btn'),
     rosterClearBtn: el('roster-clear-btn'),
     modal: el('image-modal'),
     modalImg: el('modal-img'),
@@ -114,6 +115,7 @@
         </div>
         <div class="saved-roster-actions">
           <button class="btn load-btn">Load</button>
+          <a class="btn pdf-btn" href="/api/rosters/${encodeURIComponent(name)}/pdf">PDF</a>
           <button class="btn delete-btn">Delete</button>
         </div>`;
       card.querySelector('.load-btn').addEventListener('click', () => {
@@ -345,6 +347,42 @@
       showSaveStatus(`Saved as "${name}".`, false);
     } catch (e) {
       showSaveStatus('Could not save roster.', true);
+    }
+  });
+
+  els.rosterPdfBtn.addEventListener('click', async () => {
+    if (!state.rosterIds.size) {
+      showSaveStatus('Add at least one unit before downloading a PDF.', true);
+      return;
+    }
+    const originalText = els.rosterPdfBtn.textContent;
+    els.rosterPdfBtn.disabled = true;
+    els.rosterPdfBtn.textContent = 'Building PDF…';
+    try {
+      const res = await fetch('/api/roster-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          realm: state.selectedRealm,
+          unitIds: [...state.rosterIds],
+          name: state.currentRosterName || 'Roster',
+        }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${state.currentRosterName || 'roster'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showSaveStatus('Could not build PDF.', true);
+    } finally {
+      els.rosterPdfBtn.disabled = false;
+      els.rosterPdfBtn.textContent = originalText;
     }
   });
 

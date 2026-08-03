@@ -4,6 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
+const { buildRosterPdf } = require('./pdf');
 
 require('./setup'); // downloads unit cards / builds units.json on first run; no-op after that
 
@@ -27,6 +28,45 @@ const MIME = {
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
 };
+
+let unitsById = new Map();
+function loadUnitsIndex() {
+  try {
+    const units = JSON.parse(fs.readFileSync(UNITS_FILE, 'utf8'));
+    unitsById = new Map(units.map(u => [u.id, u]));
+  } catch (e) {
+    unitsById = new Map();
+  }
+}
+loadUnitsIndex();
+
+// Resolves roster unit ids to card art for PDF export, sorted to match the
+// app's own faction/name grouping.
+function cardsFromIds(unitIds) {
+  const cards = [];
+  for (const id of unitIds) {
+    const u = unitsById.get(id);
+    if (!u) continue;
+    cards.push({
+      name: u.unit,
+      faction: u.faction,
+      cost: u.cost,
+      imagePath: path.join(UNIT_CARDS_DIR, u.image.slice('/unit_cards/'.length)),
+    });
+  }
+  cards.sort((a, b) => a.faction.localeCompare(b.faction) || a.name.localeCompare(b.name));
+  return cards;
+}
+
+function sendPdf(res, filename, buffer) {
+  const safeName = filename.replace(/[\\"]/g, '').trim() || 'roster';
+  res.writeHead(200, {
+    'Content-Type': 'application/pdf',
+    'Content-Length': buffer.length,
+    'Content-Disposition': `attachment; filename="${safeName}.pdf"`,
+  });
+  res.end(buffer);
+}
 
 function readRosters() {
   try {
@@ -98,6 +138,35 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/rosters' && req.method === 'GET') {
       return sendJson(res, 200, readRosters());
+    }
+
+    if (pathname.startsWith('/api/rosters/') && pathname.endsWith('/pdf') && req.method === 'GET') {
+      const name = decodeURIComponent(pathname.slice('/api/rosters/'.length, -'/pdf'.length));
+      const roster = readRosters()[name];
+      if (!roster) return sendJson(res, 404, { error: 'Roster not found' });
+      const cards = cardsFromIds(roster.unitIds);
+      if (!cards.length) return sendJson(res, 400, { error: 'Roster has no valid units' });
+      const pdf = buildRosterPdf(cards, name, `${roster.realm} — ${cards.length} units — ${cards.reduce((s, c) => s + c.cost, 0)} pts`);
+      return sendPdf(res, name, pdf);
+    }
+
+    if (pathname === '/api/roster-pdf' && req.method === 'POST') {
+      const bodyText = await readBody(req);
+      let body;
+      try {
+        body = JSON.parse(bodyText || '{}');
+      } catch (e) {
+        return sendJson(res, 400, { error: 'Invalid JSON body' });
+      }
+      if (!Array.isArray(body.unitIds) || !body.unitIds.length) {
+        return sendJson(res, 400, { error: 'Body must include a non-empty unitIds[]' });
+      }
+      const cards = cardsFromIds(body.unitIds);
+      if (!cards.length) return sendJson(res, 400, { error: 'No valid units found' });
+      const title = body.name || 'Roster';
+      const subtitle = `${body.realm || ''}${body.realm ? ' — ' : ''}${cards.length} units — ${cards.reduce((s, c) => s + c.cost, 0)} pts`;
+      const pdf = buildRosterPdf(cards, title, subtitle);
+      return sendPdf(res, title, pdf);
     }
 
     if (pathname.startsWith('/api/rosters/') && (req.method === 'POST' || req.method === 'DELETE')) {

@@ -47,12 +47,15 @@ body {
   background: var(--panel-alt);
   color: var(--text);
   cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
 }
 .btn:hover { background: #313644; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-primary { background: var(--accent); border-color: var(--accent); }
 .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
 .btn-secondary { background: transparent; }
+#roster-pdf-btn { width: 100%; margin-top: 16px; text-align: center; }
 .btn-danger-outline { background: transparent; border-color: #7a3230; color: #e0716a; margin-top: 16px; width: 100%; }
 .btn-danger-outline:hover { background: #2a1616; }
 .btn-icon {
