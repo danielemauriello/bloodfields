@@ -48,3 +48,9 @@ environment variable.
 - `GET /api/rosters` — list all saved rosters
 - `POST /api/rosters/:name` — save/overwrite a roster (`{ realm, unitIds: [] }`)
 - `DELETE /api/rosters/:name` — delete a saved roster
+
+## Changelog
+
+- **2026-08-03** — Added `setup.js`, a single command for first-time setup.
+  It replaces running `download_unit_cards.js` and `build_data.js`
+  separately, and skips each step whose output already exists.
