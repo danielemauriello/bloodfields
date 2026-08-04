@@ -7,6 +7,8 @@
     factionsByKey: new Map(), // `${realm}|||${faction}` -> faction reference info
     selectedRealm: null,
     rosterIds: new Set(),
+    modalList: [],
+    modalIndex: -1,
     currentRosterName: '',
     lastSavedIds: new Set(), // snapshot of rosterIds as of the last save/load/new-roster, for dirty checking
   };
@@ -56,6 +58,8 @@
     modalImg: el('modal-img'),
     modalCaption: el('modal-caption'),
     modalClose: el('modal-close'),
+    modalPrev: el('modal-prev'),
+    modalNext: el('modal-next'),
   };
 
   function formatCost(cost) {
@@ -315,6 +319,12 @@
     return [...byFaction(inRealm), ...byFaction(mercs)];
   }
 
+  // Flattened units in the same order they're rendered in the unit list, so
+  // modal prev/next navigation matches what the user sees on screen.
+  function flatUnitList() {
+    return groupUnits().flatMap(g => g.units);
+  }
+
   // Strips a (sometimes typo'd) "<Faction> Loyalty Bonus:" prefix so it isn't
   // repeated right under our own "Loyalty Bonus" heading.
   function stripBonusPrefix(text) {
@@ -441,25 +451,63 @@
   }
 
   function openImageModal(u) {
+    state.modalList = flatUnitList();
+    state.modalIndex = state.modalList.findIndex(x => x.id === u.id);
+    renderModalUnit();
+    els.modal.classList.remove('hidden');
+  }
+
+  function renderModalUnit() {
+    const u = state.modalList[state.modalIndex];
+    if (!u) return;
     els.modalImg.src = u.image;
     els.modalImg.alt = u.unit;
     els.modalCaption.textContent = `${u.unit} — ${u.faction} — ${formatCost(u.cost)} pts`;
-    els.modal.classList.remove('hidden');
+    els.modalPrev.classList.toggle('hidden', state.modalIndex <= 0);
+    els.modalNext.classList.toggle('hidden', state.modalIndex >= state.modalList.length - 1);
+  }
+
+  function navigateModal(delta) {
+    const next = state.modalIndex + delta;
+    if (next < 0 || next >= state.modalList.length) return;
+    state.modalIndex = next;
+    renderModalUnit();
   }
 
   function closeImageModal() {
     els.modal.classList.add('hidden');
     els.modalImg.src = '';
+    state.modalList = [];
+    state.modalIndex = -1;
   }
 
   els.modalClose.addEventListener('click', closeImageModal);
   els.modal.querySelector('.modal-backdrop').addEventListener('click', closeImageModal);
+  els.modalPrev.addEventListener('click', () => navigateModal(-1));
+  els.modalNext.addEventListener('click', () => navigateModal(1));
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeImageModal();
       closeDrawer();
+    } else if (!els.modal.classList.contains('hidden')) {
+      if (e.key === 'ArrowLeft') navigateModal(-1);
+      else if (e.key === 'ArrowRight') navigateModal(1);
     }
   });
+
+  // Swipe support for touch devices.
+  let modalTouchStartX = null;
+  els.modal.addEventListener('touchstart', e => {
+    modalTouchStartX = e.changedTouches[0].screenX;
+  }, { passive: true });
+  els.modal.addEventListener('touchend', e => {
+    if (modalTouchStartX === null) return;
+    const dx = e.changedTouches[0].screenX - modalTouchStartX;
+    modalTouchStartX = null;
+    const SWIPE_THRESHOLD = 40;
+    if (dx > SWIPE_THRESHOLD) navigateModal(-1);
+    else if (dx < -SWIPE_THRESHOLD) navigateModal(1);
+  }, { passive: true });
 
   // ---------- Roster drawer ----------
 

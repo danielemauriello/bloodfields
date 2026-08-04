@@ -200,3 +200,14 @@ body {
 .modal-content img { max-width: 100%; max-height: 78vh; border-radius: 6px; }
 .modal-content .btn-icon { position: absolute; top: 6px; right: 6px; }
 .modal-caption { margin-top: 10px; font-size: 14px; color: var(--text-dim); }
+
+.modal-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 40px; border-radius: 50%; border: none;
+  background: rgba(0, 0, 0, 0.35); color: var(--text); font-size: 22px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  opacity: 0.5; transition: opacity 0.15s ease, background 0.15s ease;
+}
+.modal-nav:hover { opacity: 1; background: rgba(0, 0, 0, 0.55); }
+.modal-nav-prev { left: 6px; }
+.modal-nav-next { right: 6px; }
