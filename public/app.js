@@ -37,6 +37,7 @@
     topbarRealm: el('topbar-realm'),
     topbarRealmName: el('topbar-realm-name'),
     changeRealmBtn: el('change-realm-btn'),
+    homeLink: el('home-link'),
     rosterToggle: el('roster-toggle'),
     rosterToggleCount: el('roster-toggle-count'),
     rosterToggleCost: el('roster-toggle-cost'),
@@ -293,6 +294,16 @@
   }
 
   els.changeRealmBtn.addEventListener('click', () => {
+    if (hasUnsavedChanges() && !confirm('Go back? Any unsaved changes to the current roster will be lost.')) {
+      return;
+    }
+    state.selectedRealm = null;
+    showPickerView();
+  });
+
+  els.homeLink.addEventListener('click', e => {
+    e.preventDefault();
+    if (state.selectedRealm === null) return;
     if (hasUnsavedChanges() && !confirm('Go back? Any unsaved changes to the current roster will be lost.')) {
       return;
     }
