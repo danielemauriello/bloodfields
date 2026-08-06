@@ -58,6 +58,7 @@
     modal: el('image-modal'),
     modalImg: el('modal-img'),
     modalCaption: el('modal-caption'),
+    modalAddBtn: el('modal-add-btn'),
     modalClose: el('modal-close'),
     modalPrev: el('modal-prev'),
     modalNext: el('modal-next'),
@@ -433,7 +434,7 @@
     addBtn.className = 'add-btn';
     addBtn.type = 'button';
     setAddBtnState(addBtn, state.rosterIds.has(u.id));
-    addBtn.addEventListener('click', () => toggleUnit(u.id, addBtn));
+    addBtn.addEventListener('click', () => toggleUnit(u.id));
 
     row.append(nameBtn, type, cost, addBtn);
     return row;
@@ -451,13 +452,29 @@
     }
   }
 
-  function toggleUnit(id, btnEl) {
+  function setModalAddBtnState(btn, inRoster) {
+    btn.textContent = inRoster ? 'Remove from roster' : 'Add to roster';
+    btn.classList.toggle('added', inRoster);
+  }
+
+  // Keeps the unit-list row button and the modal button for a given unit in
+  // sync with each other, since either one can trigger the toggle.
+  function syncAddButtons(id) {
+    const inRoster = state.rosterIds.has(id);
+    const rowBtn = els.unitList.querySelector(`.unit-row[data-id="${cssEscape(id)}"] .add-btn`);
+    if (rowBtn) setAddBtnState(rowBtn, inRoster);
+    if (!els.modal.classList.contains('hidden') && state.modalList[state.modalIndex] && state.modalList[state.modalIndex].id === id) {
+      setModalAddBtnState(els.modalAddBtn, inRoster);
+    }
+  }
+
+  function toggleUnit(id) {
     if (state.rosterIds.has(id)) {
       state.rosterIds.delete(id);
     } else {
       state.rosterIds.add(id);
     }
-    if (btnEl) setAddBtnState(btnEl, state.rosterIds.has(id));
+    syncAddButtons(id);
     renderRosterDrawer();
   }
 
@@ -474,9 +491,15 @@
     els.modalImg.src = u.image;
     els.modalImg.alt = u.unit;
     els.modalCaption.textContent = `${u.unit} — ${u.faction} — ${formatCost(u.cost)} pts`;
+    setModalAddBtnState(els.modalAddBtn, state.rosterIds.has(u.id));
     els.modalPrev.classList.toggle('hidden', state.modalIndex <= 0);
     els.modalNext.classList.toggle('hidden', state.modalIndex >= state.modalList.length - 1);
   }
+
+  els.modalAddBtn.addEventListener('click', () => {
+    const u = state.modalList[state.modalIndex];
+    if (u) toggleUnit(u.id);
+  });
 
   function navigateModal(delta) {
     const next = state.modalIndex + delta;
@@ -540,8 +563,7 @@
         item.querySelector('.roster-item-remove').addEventListener('click', () => {
           state.rosterIds.delete(u.id);
           renderRosterDrawer();
-          const btn = els.unitList.querySelector(`.unit-row[data-id="${cssEscape(u.id)}"] .add-btn`);
-          if (btn) setAddBtnState(btn, false);
+          syncAddButtons(u.id);
         });
         els.rosterItems.appendChild(item);
       }

@@ -203,6 +203,15 @@ body {
 .modal-content .btn-icon { position: absolute; top: 6px; right: 6px; }
 .modal-caption { margin-top: 10px; font-size: 14px; color: var(--text-dim); }
 
+.modal-add-btn {
+  margin-top: 12px; padding: 8px 18px; font: inherit; font-weight: 600;
+  border-radius: 6px; cursor: pointer; border: 1px solid var(--accent);
+  background: var(--accent); color: #fff;
+}
+.modal-add-btn:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.modal-add-btn.added { background: var(--good); border-color: var(--good); color: #fff; }
+.modal-add-btn.added:hover { background: var(--good); border-color: var(--good); filter: brightness(1.1); }
+
 .modal-nav {
   position: absolute; top: 50%; transform: translateY(-50%);
   width: 40px; height: 40px; border-radius: 50%; border: none;
