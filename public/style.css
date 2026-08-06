@@ -123,7 +123,9 @@ body {
   display: flex; align-items: center; gap: 12px;
   padding: 8px 10px; border-radius: 6px;
 }
-.unit-row:hover { background: var(--panel); }
+.unit-row:hover { background: var(--panel-alt); }
+.unit-row.in-roster { background: var(--panel); }
+.unit-row.in-roster:hover { background: #2f3444; }
 .unit-name-btn {
   background: none; border: none; color: var(--text); font: inherit; text-align: left;
   cursor: pointer; flex: 1; padding: 4px 0; text-decoration: underline dotted transparent;

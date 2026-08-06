@@ -415,6 +415,7 @@
   function renderUnitRow(u) {
     const row = document.createElement('div');
     row.className = 'unit-row';
+    row.classList.toggle('in-roster', state.rosterIds.has(u.id));
     row.dataset.id = u.id;
 
     const nameBtn = document.createElement('button');
@@ -461,8 +462,11 @@
   // sync with each other, since either one can trigger the toggle.
   function syncAddButtons(id) {
     const inRoster = state.rosterIds.has(id);
-    const rowBtn = els.unitList.querySelector(`.unit-row[data-id="${cssEscape(id)}"] .add-btn`);
-    if (rowBtn) setAddBtnState(rowBtn, inRoster);
+    const row = els.unitList.querySelector(`.unit-row[data-id="${cssEscape(id)}"]`);
+    if (row) {
+      row.classList.toggle('in-roster', inRoster);
+      setAddBtnState(row.querySelector('.add-btn'), inRoster);
+    }
     if (!els.modal.classList.contains('hidden') && state.modalList[state.modalIndex] && state.modalList[state.modalIndex].id === id) {
       setModalAddBtnState(els.modalAddBtn, inRoster);
     }
