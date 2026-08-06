@@ -482,8 +482,8 @@
     renderRosterDrawer();
   }
 
-  function openImageModal(u) {
-    state.modalList = flatUnitList();
+  function openImageModal(u, list) {
+    state.modalList = list || flatUnitList();
     state.modalIndex = state.modalList.findIndex(x => x.id === u.id);
     renderModalUnit();
     els.modal.classList.remove('hidden');
@@ -560,15 +560,28 @@
       for (const u of units) {
         const item = document.createElement('div');
         item.className = 'roster-item';
-        item.innerHTML = `
-          <span class="roster-item-name">${escapeHtml(u.unit)}</span>
-          <span class="roster-item-cost">${formatCost(u.cost)} pts</span>
-          <button class="roster-item-remove" title="Remove">×</button>`;
-        item.querySelector('.roster-item-remove').addEventListener('click', () => {
+
+        const nameBtn = document.createElement('button');
+        nameBtn.className = 'roster-item-name';
+        nameBtn.type = 'button';
+        nameBtn.textContent = u.unit;
+        nameBtn.addEventListener('click', () => openImageModal(u, units));
+
+        const cost = document.createElement('span');
+        cost.className = 'roster-item-cost';
+        cost.textContent = `${formatCost(u.cost)} pts`;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'roster-item-remove';
+        removeBtn.title = 'Remove';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => {
           state.rosterIds.delete(u.id);
           renderRosterDrawer();
           syncAddButtons(u.id);
         });
+
+        item.append(nameBtn, cost, removeBtn);
         els.rosterItems.appendChild(item);
       }
     }
